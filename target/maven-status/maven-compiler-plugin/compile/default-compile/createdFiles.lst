@@ -1,12 +1,4 @@
 com\vifinancenews\daos\AccountDAO.class
-com\vifinancenews\services\UserService.class
-com\vifinancenews\utilities\EmailUtility$1.class
 com\vifinancenews\models\Account.class
-com\vifinancenews\utilities\RedisConnection.class
-com\vifinancenews\utilities\OTPGenerator.class
 com\vifinancenews\models\Identifier.class
-com\vifinancenews\utilities\PasswordHash.class
-com\vifinancenews\utilities\RedisOTPService.class
 com\vifinancenews\daos\IdentifierDAO.class
-com\vifinancenews\utilities\DatabaseConfig.class
-com\vifinancenews\utilities\EmailUtility.class

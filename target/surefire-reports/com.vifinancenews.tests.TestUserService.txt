@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.vifinancenews.tests.TestUserService
--------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 10.72 s -- in com.vifinancenews.tests.TestUserService

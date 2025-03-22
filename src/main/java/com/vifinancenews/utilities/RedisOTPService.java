@@ -1,31 +1,63 @@
 package com.vifinancenews.utilities;
 
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisException;
 
 public class RedisOTPService {
     private static final int OTP_EXPIRY_SECONDS = 300; // 5 minutes
 
     public static void storeOTP(String email, String otp) {
-        try (Jedis jedis = RedisConnection.connect()) {
-            jedis.setex("otp:" + email, OTP_EXPIRY_SECONDS, otp);
+        try (Jedis jedis = RedisConnection.getConnection()) {
+            String key = formatKey(email);
+            jedis.setex(key, OTP_EXPIRY_SECONDS, otp);
+            System.out.println("OTP stored in Redis for: " + email);
+        } catch (JedisException e) {
+            System.err.println("Redis error while storing OTP: " + e.getMessage());
         }
     }
 
     public static boolean verifyOTP(String email, String inputOTP) {
-        try (Jedis jedis = RedisConnection.connect()) {
-            String storedOTP = jedis.get("otp:" + email);
-            if (storedOTP != null && storedOTP.equals(inputOTP)) {
-                jedis.del("otp:" + email); // Delete OTP after successful login
+        try (Jedis jedis = RedisConnection.getConnection()) {
+            String key = formatKey(email);
+            String storedOTP = jedis.get(key);
+
+            if (storedOTP == null) {
+                System.out.println("OTP expired or not found for: " + email);
+                return false;
+            }
+
+            if (storedOTP.equals(inputOTP)) {
+                jedis.del(key); // Delete OTP after successful verification
+                System.out.println("OTP verified and deleted for: " + email);
                 return true;
             }
+
+            System.out.println("Invalid OTP for: " + email);
+            return false;
+        } catch (JedisException e) {
+            System.err.println("Redis error while verifying OTP: " + e.getMessage());
             return false;
         }
     }
 
-    // Add getOTP for TESTING ONLY
+    // Optional: Fetch OTP for debugging (DO NOT USE IN PRODUCTION)
     public static String getOTP(String email) {
-        try (Jedis jedis = RedisConnection.connect()) {
-            return jedis.get("otp:" + email);
+        try (Jedis jedis = RedisConnection.getConnection()) {
+            return jedis.get(formatKey(email));
+        } catch (JedisException e) {
+            System.err.println("Redis error while fetching OTP: " + e.getMessage());
+            return null;
+        }
+    }
+
+    // Format email to avoid issues with Redis keys
+    private static String formatKey(String email) {
+        return "otp:" + email.replace("@", "_").replace(".", "_");
+    }
+
+    public static void clearOTP(String email) {
+        try (Jedis jedis = RedisConnection.getConnection()) {
+            jedis.del("OTP:" + email); // Remove OTP from Redis
         }
     }
 }

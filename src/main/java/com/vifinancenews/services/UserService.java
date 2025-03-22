@@ -4,10 +4,7 @@ import com.vifinancenews.models.Identifier;
 import com.vifinancenews.daos.AccountDAO;
 import com.vifinancenews.daos.IdentifierDAO;
 import com.vifinancenews.models.Account;
-import com.vifinancenews.utilities.EmailUtility;
-import com.vifinancenews.utilities.PasswordHash;
-import com.vifinancenews.utilities.OTPGenerator;
-import com.vifinancenews.utilities.RedisOTPService;
+import com.vifinancenews.utilities.*;   
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -23,7 +20,7 @@ public class UserService {
         Account newAccount = AccountDAO.insertAccount(newIdentifier.getId(), userName, avatarLink, bio);
         return newAccount != null;
     }
-    
+
     public boolean deleteUserByEmail(String email) throws SQLException {
         Identifier user = IdentifierDAO.getIdentifierByEmail(email);
         if (user == null) return false;
@@ -47,7 +44,7 @@ public class UserService {
 
         // Verify password
         if (PasswordHash.verifyPassword(rawPassword, user.getPasswordHash())) {
-            // Generate OTP using a utility class
+            // Generate OTP
             String otp = OTPGenerator.generateOTP();
 
             // Store OTP in Redis
@@ -63,9 +60,9 @@ public class UserService {
 
             System.out.println("OTP has been sent to " + email);
 
-            // Reset failed attempts but do not update last login yet (only after OTP validation)
+            // Reset failed attempts (only after OTP validation)
             IdentifierDAO.resetFailedAttempts(email);
-    
+
             return true; // Password correct, OTP sent
         } else {
             // Increment failed attempts and lock if needed
@@ -76,19 +73,33 @@ public class UserService {
         }
     }
 
-    public boolean verifyOTP(String email, String enteredOTP) throws SQLException {
+    public String verifyOTP(String email, String enteredOTP) throws SQLException {
         boolean isValid = RedisOTPService.verifyOTP(email, enteredOTP);
-    
+
         if (isValid) {
-            IdentifierDAO.resetFailedAttempts(email);
             IdentifierDAO.updateLastLogin(email);
             System.out.println("Login successful!");
+
+            // Generate JWT Token after successful OTP verification
+            return JwtUtil.generateToken(email);
+        }
+
+        System.out.println("Invalid or expired OTP.");
+        return null;
+    }
+
+    public boolean logout(String token) {
+        // Invalidate session by blacklisting the token in Redis (if needed)
+        String email = JwtUtil.getEmailFromToken(token);
+        if (email != null) {
+            RedisOTPService.clearOTP(email);
+            System.out.println("User logged out.");
             return true;
         }
-    
-        System.out.println("Invalid or expired OTP.");
         return false;
     }
-    
 
+    public boolean isAuthenticated(String token) {
+        return JwtUtil.validateToken(token);
+    }
 }
