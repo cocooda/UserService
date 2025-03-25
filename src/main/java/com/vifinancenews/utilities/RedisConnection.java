@@ -13,11 +13,12 @@ public class RedisConnection {
 
     private static final JedisPool jedisPool = new JedisPool(new JedisPoolConfig(), REDIS_HOST, REDIS_PORT, true);
 
-    public static Jedis getConnection() {
+    public static Jedis getConnection(int databaseIndex) {
         Jedis jedis = jedisPool.getResource();
         if (REDIS_PASSWORD != null && !REDIS_PASSWORD.isEmpty()) {
             jedis.auth(REDIS_PASSWORD);
         }
+        jedis.select(databaseIndex); // Select database for session or OTP
         return jedis;
     }
 }

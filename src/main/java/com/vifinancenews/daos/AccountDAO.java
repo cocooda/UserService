@@ -1,7 +1,7 @@
 package com.vifinancenews.daos;
 
+import com.vifinancenews.config.DatabaseConfig;
 import com.vifinancenews.models.Account;
-import com.vifinancenews.utilities.DatabaseConfig;
 import com.vifinancenews.utilities.IDHash;
 
 import java.sql.*;

@@ -5,9 +5,10 @@ import redis.clients.jedis.exceptions.JedisException;
 
 public class RedisOTPService {
     private static final int OTP_EXPIRY_SECONDS = 300; // 5 minutes
+    private static final int OTP_REDIS_DB = 1; // Store OTPs in database 1
 
     public static void storeOTP(String email, String otp) {
-        try (Jedis jedis = RedisConnection.getConnection()) {
+        try (Jedis jedis = RedisConnection.getConnection(OTP_REDIS_DB)) {
             String key = formatKey(email);
             jedis.setex(key, OTP_EXPIRY_SECONDS, otp);
             System.out.println("OTP stored in Redis for: " + email);
@@ -17,7 +18,7 @@ public class RedisOTPService {
     }
 
     public static boolean verifyOTP(String email, String inputOTP) {
-        try (Jedis jedis = RedisConnection.getConnection()) {
+        try (Jedis jedis = RedisConnection.getConnection(OTP_REDIS_DB)) {
             String key = formatKey(email);
             String storedOTP = jedis.get(key);
 
@@ -40,24 +41,13 @@ public class RedisOTPService {
         }
     }
 
-    // Optional: Fetch OTP for debugging (DO NOT USE IN PRODUCTION)
-    public static String getOTP(String email) {
-        try (Jedis jedis = RedisConnection.getConnection()) {
-            return jedis.get(formatKey(email));
-        } catch (JedisException e) {
-            System.err.println("Redis error while fetching OTP: " + e.getMessage());
-            return null;
+    public static void clearOTP(String email) {
+        try (Jedis jedis = RedisConnection.getConnection(OTP_REDIS_DB)) {
+            jedis.del(formatKey(email)); // Remove OTP from Redis
         }
     }
 
-    // Format email to avoid issues with Redis keys
     private static String formatKey(String email) {
         return "otp:" + email.replace("@", "_").replace(".", "_");
-    }
-
-    public static void clearOTP(String email) {
-        try (Jedis jedis = RedisConnection.getConnection()) {
-            jedis.del("OTP:" + email); // Remove OTP from Redis
-        }
     }
 }

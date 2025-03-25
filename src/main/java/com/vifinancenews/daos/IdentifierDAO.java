@@ -1,7 +1,7 @@
 package com.vifinancenews.daos;
 
+import com.vifinancenews.config.DatabaseConfig;
 import com.vifinancenews.models.Identifier;
-import com.vifinancenews.utilities.DatabaseConfig;
 
 import java.sql.*;
 import java.time.LocalDateTime;
