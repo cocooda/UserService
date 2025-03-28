@@ -5,10 +5,9 @@ import redis.clients.jedis.exceptions.JedisException;
 
 public class RedisOTPService {
     private static final int OTP_EXPIRY_SECONDS = 300; // 5 minutes
-    private static final int OTP_REDIS_DB = 1; // Store OTPs in database 1
 
     public static void storeOTP(String email, String otp) {
-        try (Jedis jedis = RedisConnection.getConnection(OTP_REDIS_DB)) {
+        try (Jedis jedis = RedisConnection.getConnection()) {
             String key = formatKey(email);
             jedis.setex(key, OTP_EXPIRY_SECONDS, otp);
             System.out.println("OTP stored in Redis for: " + email);
@@ -18,7 +17,7 @@ public class RedisOTPService {
     }
 
     public static boolean verifyOTP(String email, String inputOTP) {
-        try (Jedis jedis = RedisConnection.getConnection(OTP_REDIS_DB)) {
+        try (Jedis jedis = RedisConnection.getConnection()) {
             String key = formatKey(email);
             String storedOTP = jedis.get(key);
 
@@ -42,7 +41,7 @@ public class RedisOTPService {
     }
 
     public static void clearOTP(String email) {
-        try (Jedis jedis = RedisConnection.getConnection(OTP_REDIS_DB)) {
+        try (Jedis jedis = RedisConnection.getConnection()) {
             jedis.del(formatKey(email)); // Remove OTP from Redis
         }
     }

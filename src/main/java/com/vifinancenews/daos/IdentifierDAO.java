@@ -119,4 +119,14 @@ public class IdentifierDAO {
             return rowsAffected > 0;
         }
     }
+
+    public static boolean deleteIdentifierByUserId(UUID identifierId) throws SQLException {
+        String query = "DELETE FROM identifier WHERE id = ?";
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setObject(1, identifierId);
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+        }
+    }
 }

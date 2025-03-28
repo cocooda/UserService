@@ -5,12 +5,14 @@ import com.vifinancenews.daos.AccountDAO;
 import com.vifinancenews.daos.IdentifierDAO;
 import com.vifinancenews.models.Account;
 import com.vifinancenews.utilities.EmailUtility;
+import com.vifinancenews.utilities.IDHash;
 import com.vifinancenews.utilities.PasswordHash;
 import com.vifinancenews.utilities.OTPGenerator;
 import com.vifinancenews.utilities.RedisOTPService;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public class UserService {
 
@@ -35,34 +37,40 @@ public class UserService {
         return accountDeleted && identifierDeleted;
     }
 
-    public String login(String email, String password, String enteredOTP) throws SQLException {
+    public boolean deleteUserById(UUID userId) throws SQLException {
+        boolean accountDeleted = AccountDAO.deleteAccountByUserId(userId);
+        boolean identifierDeleted = IdentifierDAO.deleteIdentifierByUserId(userId);
+        return accountDeleted && identifierDeleted;
+    }
+
+    public boolean verifyPassword(String email, String password) throws SQLException {
         Identifier user = fetchUser(email);
         if (user == null) {
-            System.out.println("User not found: " + email); // Debugging line
-            return null; // Return null if user is not found
+            System.out.println("User not found: " + email);
+            return false;
         }
-    
+
         if (isAccountLocked(user)) {
-            return null; // Return null if account is locked
+            return false;
         }
-    
-        boolean passwordMatches = verifyPassword(user, password);
-        System.out.println("Password matches: " + passwordMatches);
+
+        boolean passwordMatches = PasswordHash.verifyPassword(password, user.getPasswordHash());
         if (!passwordMatches) {
-            return null; // Return null if password doesn't match
+            handleFailedLoginAttempt(user);
+            return false;
         }
-    
-        // OTP Handling
-        if (enteredOTP == null || enteredOTP.isEmpty()) {
-            sendOTP(email); // Send OTP if not entered
-            return null; // Return null, as OTP is required
-        }
-    
+
+        sendOTP(email); // Send OTP after successful password verification
+        return true;
+    }
+
+    public String login(String email, String enteredOTP) throws SQLException {
         if (!verifyOTP(email, enteredOTP)) {
-            return null; // Return null if OTP is incorrect
+            return null; // OTP incorrect or expired
         }
-    
-        return user.getId().toString(); // Return the user ID if login is successful
+        
+        Identifier user = fetchUser(email);
+        return (user != null) ? user.getId().toString() : null; // Return user ID if OTP is valid
     }
     
 
@@ -76,14 +84,6 @@ public class UserService {
             return true;
         }
         return false;
-    }
-
-    private boolean verifyPassword(Identifier user, String password) throws SQLException {
-        if (!PasswordHash.verifyPassword(password, user.getPasswordHash())) {
-            handleFailedLoginAttempt(user);
-            return false;
-        }
-        return true;
     }
 
     private void handleFailedLoginAttempt(Identifier user) throws SQLException {
@@ -114,9 +114,14 @@ public class UserService {
         return true;
     }
 
-    public boolean isAccountLoggedIn(String userId) {
-        // Dummy implementation of account status check
-        // Ideally, this could involve a check to see if the user exists in the database
-        return userId != null && !userId.isEmpty();
+    public Account getUserProfile(UUID userId) throws SQLException {
+        return AccountDAO.getAccountByUserId(userId);
     }
+    
+
+    public boolean updateUserProfile(UUID userId, String userName, String avatarLink, String bio) throws SQLException {
+        return AccountDAO.updateAccount(userId, userName, avatarLink, bio);
+    }
+    
+
 }

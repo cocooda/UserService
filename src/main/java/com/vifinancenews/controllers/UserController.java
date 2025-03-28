@@ -1,101 +1,78 @@
 package com.vifinancenews.controllers;
 
-import com.vifinancenews.services.UserService;
-import io.javalin.Javalin;
 import io.javalin.http.Context;
-
+import io.javalin.http.Handler;
+import com.vifinancenews.services.UserService;
+import com.vifinancenews.models.Account;
 import java.sql.SQLException;
+import java.util.Map;
+import java.util.UUID;
 
 public class UserController {
-    private final UserService userService;
+    private static final UserService userService = new UserService();
 
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
-
-    public void registerRoutes(Javalin app) {
-        System.out.println("Registering user routes...");
-        app.post("/api/user/register", this::register);
-        app.post("/api/user/login", this::login);
-        app.get("/api/user/profile", this::getProfile);
-        app.post("/api/user/logout", this::logout);
-        app.delete("/api/user/delete", this::deleteUser);
-    }
-
-    private void register(Context ctx) {
-        String email = ctx.formParam("email");
-        String password = ctx.formParam("password");
-        String userName = ctx.formParam("userName");
-        String avatarLink = ctx.formParam("avatarLink");
-        String bio = ctx.formParam("bio");
-
-        try {
-            if (userService.registerUser(email, password, userName, avatarLink, bio)) {
-                ctx.result("Registration successful.").status(200);
-            } else {
-                ctx.result("Registration failed.").status(400);
-            }
-        } catch (SQLException e) {
-            ctx.result("Database error: " + e.getMessage()).status(500);
-        }
-    }
-
-    private void login(Context ctx) {
-        String email = ctx.formParam("email");
-        String password = ctx.formParam("password");
-        String otp = ctx.formParam("otp");
-    
-        // Print received values for debugging
-        System.out.println("Received login data - email: " + email + ", password: " + password + ", otp: " + otp);
-    
-        try {
-            String userId = userService.login(email, password, otp); // Get the user ID from login method
-    
-            if (userId != null) {
-                // Store the userId in session
-                ctx.sessionAttribute("userId", userId);
-                String sessionId = ctx.req().getSession().getId(); // ✅ Log session ID
-
-                System.out.println(" Login successful! Stored userId: " + userId);
-                System.out.println(" Session ID at login: " + sessionId);
-                ctx.result("Login successful. Session started.").status(200);
-            } else {
-                ctx.result("Invalid credentials or OTP required.").status(400);
-            }
-        } catch (SQLException e) {
-            ctx.result("Database error: " + e.getMessage()).status(500);
-        }
-    }
-    
-
-    private void getProfile(Context ctx) {
+    public static Handler getUserProfile = ctx -> {
         String userId = ctx.sessionAttribute("userId");
-        System.out.println("Stored userId: " + userId);
-        if (userService.isAccountLoggedIn(userId)) {
-            System.out.println("User is logged in, fetching profile...");
-            ctx.result("User Profile - ID: " + userId).status(200);
+        if (userId == null) {
+            ctx.status(401).result("Unauthorized");
+            return;
+        }
+
+        UUID uuid = UUID.fromString(userId);
+        Account account = userService.getUserProfile(uuid);
+        if (account == null) {
+            ctx.status(404).result("User not found");
         } else {
-            System.out.println("User not logged in, access denied.");
-            ctx.result("Access denied. Please log in to view your profile.").status(401);
+            ctx.json(account);
         }
+    };
+
+    public static Handler updateUserProfile = ctx -> {
+    String userId = ctx.sessionAttribute("userId");
+    if (userId == null) {
+        ctx.status(401).result("Unauthorized");
+        return;
     }
 
-    private void logout(Context ctx) {
-        ctx.req().getSession().invalidate();
-        System.out.println("User logged out.");
-        ctx.result("You have been logged out successfully.").status(200);
+    UUID uuid = UUID.fromString(userId);
+
+    // Parse JSON request into a Map
+    Map<String, String> requestData = ctx.bodyAsClass(Map.class);
+
+    String userName = requestData.get("userName");
+    String avatarLink = requestData.get("avatarLink"); // Can be null
+    String bio = requestData.get("bio"); // Can be null
+
+    // Validate required field
+    if (userName == null || userName.isEmpty()) {
+        ctx.status(400).result("Username cannot be empty");
+        return;
     }
 
-    private void deleteUser(Context ctx) {
-        String email = ctx.formParam("email");
-        try {
-            if (userService.deleteUserByEmail(email)) {
-                ctx.result("User deleted successfully.").status(200);
-            } else {
-                ctx.result("User not found.").status(400);
-            }
-        } catch (SQLException e) {
-            ctx.result("Database error: " + e.getMessage()).status(500);
-        }
+    boolean success = userService.updateUserProfile(uuid, userName, avatarLink, bio);
+
+    if (success) {
+        ctx.status(200).result("Profile updated successfully");
+    } else {
+        ctx.status(400).result("Failed to update profile");
     }
+};
+    
+
+    public static Handler deleteUser = ctx -> {
+        String userId = ctx.sessionAttribute("userId");
+        if (userId == null) {
+            ctx.status(401).result("Unauthorized");
+            return;
+        }
+
+        UUID uuid = UUID.fromString(userId);
+        boolean deleted = userService.deleteUserById(uuid);
+
+        if (deleted) {
+            ctx.status(200).result("User deleted successfully");
+        } else {
+            ctx.status(400).result("Failed to delete user");
+        }
+    };
 }

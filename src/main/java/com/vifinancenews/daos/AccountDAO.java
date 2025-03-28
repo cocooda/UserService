@@ -64,4 +64,41 @@ public class AccountDAO {
             return rowsAffected > 0;
         }
     }
+
+    public static Account getAccountByUserId(UUID userId) throws SQLException {
+        String hashedUserId = IDHash.hashUUID(userId);
+        String query = "SELECT id, username, avatar_link, bio FROM account WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, hashedUserId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Account(
+                        rs.getString("id"),
+                        rs.getString("username"),
+                        rs.getString("avatar_link"),
+                        rs.getString("bio")
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
+    public static boolean updateAccount(UUID userId, String userName, String avatarLink, String bio) throws SQLException {
+        String hashedUserId = IDHash.hashUUID(userId);
+        String query = "UPDATE account SET username = ?, avatar_link = ?, bio = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, userName);
+            pstmt.setString(2, avatarLink);
+            pstmt.setString(3, bio);
+            pstmt.setString(4, hashedUserId);
+
+            return pstmt.executeUpdate() > 0;
+        }
+    }
 }
