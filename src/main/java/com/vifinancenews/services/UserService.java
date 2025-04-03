@@ -5,13 +5,13 @@ import com.vifinancenews.daos.AccountDAO;
 import com.vifinancenews.daos.IdentifierDAO;
 import com.vifinancenews.models.Account;
 import com.vifinancenews.utilities.EmailUtility;
-import com.vifinancenews.utilities.IDHash;
 import com.vifinancenews.utilities.PasswordHash;
 import com.vifinancenews.utilities.OTPGenerator;
 import com.vifinancenews.utilities.RedisOTPService;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 public class UserService {
@@ -43,6 +43,46 @@ public class UserService {
         return accountDeleted && identifierDeleted;
     }
 
+    public boolean softDeleteUserById(UUID userId) throws SQLException {
+        return AccountDAO.moveAccountToDeleted(userId);
+    }
+
+    public boolean isAccountSoftDeleted(UUID userId) throws SQLException {
+        return AccountDAO.isAccountInDeleted(userId);
+    }
+    
+    public boolean restoreUser(UUID userId) throws SQLException {
+        if (isWithinReactivationPeriod(userId)) {
+            return AccountDAO.restoreUserById(userId);
+        } else {
+            return false; 
+        }
+    }
+    
+    public boolean isWithinReactivationPeriod(UUID userId) throws SQLException {
+        // Get the deleted_at timestamp and compare with the current time
+        Optional<LocalDateTime> deletedAt = AccountDAO.getDeletedAccountDeletedAt(userId);
+        if (deletedAt.isPresent()) {
+            LocalDateTime deletedAtValue = deletedAt.get();
+            int reactivationPeriodDays = 30; // Define the reactivation period in days
+            LocalDateTime reactivationDeadline = deletedAtValue.plusDays(reactivationPeriodDays);
+            return LocalDateTime.now().isBefore(reactivationDeadline);
+        }
+        return false;
+    }
+
+    public static boolean permanentlyDeleteExpiredAccounts(int days) throws SQLException {
+        // Delete expired identifiers from the identifier table via the DAO
+        boolean identifiersDeleted = IdentifierDAO.deleteExpiredIdentifiers(days);
+    
+        // Delete expired accounts from the deleted_accounts table via the DAO
+        boolean accountsDeleted = AccountDAO.deleteExpiredDeletedAccounts(days);
+    
+        return identifiersDeleted || accountsDeleted;
+    }
+    
+    
+    
     public boolean verifyPassword(String email, String password) throws SQLException {
         Identifier user = fetchUser(email);
         if (user == null) {
@@ -68,11 +108,15 @@ public class UserService {
         if (!verifyOTP(email, enteredOTP)) {
             return null; // OTP incorrect or expired
         }
-        
+
         Identifier user = fetchUser(email);
-        return (user != null) ? user.getId().toString() : null; // Return user ID if OTP is valid
+        if (user == null) {
+            return null; // User not found
+        }
+
+        return user.getId().toString();
     }
-    
+
 
     private Identifier fetchUser(String email) throws SQLException {
         return IdentifierDAO.getIdentifierByEmail(email);

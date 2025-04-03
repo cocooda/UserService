@@ -40,7 +40,7 @@ public class Main {
         app.post("/api/login", AuthController.login); // Step 2: Login with OTP
         app.post("/api/logout", AuthController.logout);
         app.get("/api/auth-status", AuthController.checkAuth);
-
+        app.post("/api/reactivate-account", AuthController.reactivateAccount);
 
         // **User Routes**
         app.get("/api/user/profile", UserController.getUserProfile);

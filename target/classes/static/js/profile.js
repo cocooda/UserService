@@ -93,7 +93,7 @@ async function updateUserProfile(event) {
 
 /** ✅ Delete Account */
 async function deleteUser() {
-    if (!confirm("Are you sure? This action cannot be undone.")) return;
+    if (!confirm("Are you sure? This action cannot be undone, and your account will be deactivated for 30 days before permanent deletion.")) return;
 
     const response = await fetch("/api/user/delete", { 
         method: "DELETE",
@@ -101,9 +101,11 @@ async function deleteUser() {
     });
 
     if (response.ok) {
-        alert("Account deleted.");
-        window.location.href = "/index.html";
+        const message = await response.text(); // Get the response message
+        alert(message); // Display the message to the user
+        window.location.href = "/index.html"; // Redirect to homepage
     } else {
         alert("Failed to delete account.");
     }
 }
+

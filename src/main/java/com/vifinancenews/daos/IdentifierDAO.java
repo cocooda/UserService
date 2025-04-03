@@ -129,4 +129,17 @@ public class IdentifierDAO {
             return rowsAffected > 0;
         }
     }
+
+    public static boolean deleteExpiredIdentifiers(int days) throws SQLException {
+        String query = "DELETE FROM identifier WHERE id IN (SELECT id FROM deleted_accounts WHERE deleted_at < NOW() - INTERVAL ? DAY)";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, days);
+            int rowsDeleted = stmt.executeUpdate();
+            return rowsDeleted > 0;
+        }
+    }
+    
 }

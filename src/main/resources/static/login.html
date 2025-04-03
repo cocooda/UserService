@@ -10,6 +10,13 @@
     </div>
 </form>
 
+<!-- Reactivation Modal -->
+<div id="reactivation-modal" style="display: none;">
+    <h2>Your account is in the reactivation period.</h2>
+    <button id="reactivate-btn">Reactivate Account</button>
+    <button id="decline-reactivation-btn">No, Continue as Guest</button> <!-- New "No" button -->
+</div>
+
 <p id="error-msg" style="color: red;"></p>
 
 <script>
@@ -47,9 +54,55 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-        window.location.href = "/index.html"; // Redirect on success
+        if (data.actionRequired === "reactivate") {
+            // Show reactivation prompt if account is soft-deleted and within reactivation period
+            showReactivationPrompt();
+        } else {
+            alert("Login successful!");
+            window.location.href = "/index.html"; // Redirect to home page
+        }
     } else {
         document.getElementById("error-msg").innerText = data.error;
     }
 });
+
+/* Show Reactivation Prompt */
+function showReactivationPrompt() {
+    const reactivationModal = document.getElementById("reactivation-modal");
+    
+    // Check if the modal element exists
+    if (reactivationModal) {
+        reactivationModal.style.display = "block"; // Show the reactivation modal
+    } else {
+        console.error("Reactivation modal not found!");
+    }
+}
+
+
+document.getElementById("reactivate-btn").addEventListener("click", async () => {
+    const response = await fetch("/api/reactivate-account", {
+        method: "POST",
+        credentials: "include", // Ensure session is cleared on the backend
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+        document.getElementById("reactivation-modal").style.display = "none";
+        window.location.href = "/index.html"; // Redirect on reactivation success
+    } else {
+        document.getElementById("error-msg").innerText = data.error;
+    }
+});
+
+document.getElementById("decline-reactivation-btn").addEventListener("click", async () => {
+    // Clear the userId in session
+    await fetch("/api/logout", { method: "POST", credentials: "include" });
+
+    // Hide reactivation modal
+    document.getElementById("reactivation-modal").style.display = "none";
+
+    // Redirect back to home page as guest user
+    window.location.href = "/index.html";
+});
+
 </script>

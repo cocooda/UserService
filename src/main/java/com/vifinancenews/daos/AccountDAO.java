@@ -5,8 +5,10 @@ import com.vifinancenews.models.Account;
 import com.vifinancenews.utilities.IDHash;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class AccountDAO {
@@ -64,6 +66,110 @@ public class AccountDAO {
             return rowsAffected > 0;
         }
     }
+
+    public static boolean moveAccountToDeleted(UUID identifierId) throws SQLException {
+        String hashedId = IDHash.hashUUID(identifierId);
+    
+        String insertQuery = "INSERT INTO deleted_accounts (id, username, avatar_link, bio, deleted_at) " +
+                             "SELECT id, username, avatar_link, bio, CURRENT_TIMESTAMP FROM account WHERE id = ?";
+        String deleteQuery = "DELETE FROM account WHERE id = ?";
+    
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            conn.setAutoCommit(false);
+    
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery);
+                 PreparedStatement deleteStmt = conn.prepareStatement(deleteQuery)) {
+    
+                insertStmt.setString(1, hashedId);
+                deleteStmt.setString(1, hashedId);
+    
+                int inserted = insertStmt.executeUpdate();
+                int deleted = deleteStmt.executeUpdate();
+    
+                if (inserted > 0 && deleted > 0) {
+                    conn.commit();
+                    return true;
+                } else {
+                    conn.rollback();
+                    return false;
+                }
+            }
+        }
+    }
+    
+    public static boolean isAccountInDeleted(UUID identifierId) throws SQLException {
+        String hashedId = IDHash.hashUUID(identifierId);
+        String query = "SELECT COUNT(*) FROM deleted_accounts WHERE id = ?";
+    
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, hashedId);
+            ResultSet rs = pstmt.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+    
+    public static boolean restoreUserById(UUID identifierId) throws SQLException {
+        String hashedId = IDHash.hashUUID(identifierId);
+    
+        String restoreQuery = "INSERT INTO account (id, username, avatar_link, bio) " +
+                              "SELECT id, username, avatar_link, bio FROM deleted_accounts WHERE id = ?";
+        String deleteQuery = "DELETE FROM deleted_accounts WHERE id = ?";
+    
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            conn.setAutoCommit(false);
+    
+            try (PreparedStatement restoreStmt = conn.prepareStatement(restoreQuery);
+                 PreparedStatement deleteStmt = conn.prepareStatement(deleteQuery)) {
+    
+                restoreStmt.setString(1, hashedId);
+                deleteStmt.setString(1, hashedId);
+    
+                int restored = restoreStmt.executeUpdate();
+                int deleted = deleteStmt.executeUpdate();
+    
+                if (restored > 0 && deleted > 0) {
+                    conn.commit();
+                    return true;
+                } else {
+                    conn.rollback();
+                    return false;
+                }
+            }
+        }
+    }
+
+    public static Optional<LocalDateTime> getDeletedAccountDeletedAt(UUID identifierId) throws SQLException {
+        String hashedId = IDHash.hashUUID(identifierId);
+        String query = "SELECT deleted_at FROM deleted_accounts WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, hashedId);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return Optional.of(rs.getTimestamp("deleted_at").toLocalDateTime());
+            } else {
+                return Optional.empty();
+            }
+        }
+    }
+    
+    public static boolean deleteExpiredDeletedAccounts(int days) throws SQLException {
+        String query = "DELETE FROM deleted_accounts WHERE deleted_at < NOW() - INTERVAL ? DAY";
+    
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, days);
+            int rowsDeleted = stmt.executeUpdate();
+            return rowsDeleted > 0;
+        }
+    }
+    
+    
 
     public static Account getAccountByUserId(UUID userId) throws SQLException {
         String hashedUserId = IDHash.hashUUID(userId);

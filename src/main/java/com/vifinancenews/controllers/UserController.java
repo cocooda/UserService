@@ -1,10 +1,8 @@
 package com.vifinancenews.controllers;
 
-import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import com.vifinancenews.services.UserService;
 import com.vifinancenews.models.Account;
-import java.sql.SQLException;
 import java.util.Map;
 import java.util.UUID;
 
@@ -59,20 +57,24 @@ public class UserController {
 };
     
 
-    public static Handler deleteUser = ctx -> {
-        String userId = ctx.sessionAttribute("userId");
-        if (userId == null) {
-            ctx.status(401).result("Unauthorized");
-            return;
-        }
+public static Handler deleteUser = ctx -> {
+    String userId = ctx.sessionAttribute("userId");
+    if (userId == null) {
+        ctx.status(401).result("Unauthorized");
+        return;
+    }
 
-        UUID uuid = UUID.fromString(userId);
-        boolean deleted = userService.deleteUserById(uuid);
+    UUID uuid = UUID.fromString(userId);
+    boolean softDeleted = userService.softDeleteUserById(uuid);  // Call soft delete method
 
-        if (deleted) {
-            ctx.status(200).result("User deleted successfully");
-        } else {
-            ctx.status(400).result("Failed to delete user");
-        }
-    };
+    if (softDeleted) {
+        ctx.sessionAttribute("userId", null);
+        // Update the response to include the 30-day deactivation period
+        ctx.status(200).result("Your account has been deactivated for 30 days before permanent deletion. You can restore it during this period.");
+    } else {
+        ctx.status(400).result("Failed to soft delete user.");
+    }
+};
+
+
 }
