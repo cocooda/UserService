@@ -5,34 +5,9 @@ import com.vifinancenews.models.Identifier;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 public class IdentifierDAO {
-
-    public static List<Identifier> getAllIdentifiers() throws SQLException {
-        List<Identifier> identifiers = new ArrayList<>();
-        String query = "SELECT id, email, password_hash, created_at, last_login, failed_attempts, lockout_until FROM identifier";
-
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query);
-             ResultSet rs = pstmt.executeQuery()) {
-
-            while (rs.next()) {
-                identifiers.add(new Identifier(
-                    UUID.fromString(rs.getString("id")),
-                    rs.getString("email"),
-                    rs.getString("password_hash"),
-                    rs.getTimestamp("created_at").toLocalDateTime(),
-                    rs.getTimestamp("last_login") != null ? rs.getTimestamp("last_login").toLocalDateTime() : null,
-                    rs.getInt("failed_attempts"),
-                    rs.getTimestamp("lockout_until") != null ? rs.getTimestamp("lockout_until").toLocalDateTime() : null
-                ));
-            }
-        }
-        return identifiers.isEmpty() ? null : identifiers;
-    }
 
     public static Identifier getIdentifierByEmail(String email) throws SQLException {
         String query = "SELECT id, email, password_hash, created_at, last_login, failed_attempts, lockout_until FROM identifier WHERE email = ?";

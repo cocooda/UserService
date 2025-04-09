@@ -1,24 +1,24 @@
 package com.vifinancenews.models;
 
 public class Account {
-    private String id; // Now stores hashed UUID
+    private String userId; // Reflects 'user_id' in database (hashed UUID)
     private String userName;
     private String avatarLink;
     private String bio;
 
-    public Account(String id, String userName, String avatarLink, String bio) {
-        this.id = id;
+    public Account(String userId, String userName, String avatarLink, String bio) {
+        this.userId = userId;
         this.userName = userName;
         this.avatarLink = avatarLink;
         this.bio = bio;
     }
 
-    public String getId() {
-        return id;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getUserName() {
@@ -45,11 +45,10 @@ public class Account {
         this.bio = bio;
     }
 
-    // toString method for debugging
     @Override
     public String toString() {
         return "Account{" +
-                "id=" + id +
+                "userId='" + userId + '\'' +
                 ", userName='" + userName + '\'' +
                 ", avatarLink='" + avatarLink + '\'' +
                 ", bio='" + bio + '\'' +

@@ -10,9 +10,6 @@ services:
     depends_on:
       - db
       - redis
-    volumes:
-      - ./Web:/app  # Mount your entire project to /app
-      - ./Web/target:/app/target  # Ensure target updates automatically
 
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
