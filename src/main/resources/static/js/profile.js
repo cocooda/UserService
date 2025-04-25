@@ -5,9 +5,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
     document.getElementById("update-profile-form").addEventListener("submit", updateUserProfile);
     document.getElementById("delete-account-btn").addEventListener("click", deleteUser);
+    document.getElementById("new-avatar").addEventListener("change", handleAvatarUpload);
 });
 
-/** ✅ Check if user is authenticated */
+/* Check if user is authenticated */
 async function checkAuthStatus() {
     try {
         const response = await fetch("/api/auth-status", { credentials: "include" });
@@ -22,7 +23,7 @@ async function checkAuthStatus() {
     }
 }
 
-/** ✅ Fetch and display user profile */
+/* Fetch and display user profile */
 async function fetchUserProfile() {
     console.log("Fetching user profile...");
 
@@ -47,7 +48,7 @@ async function fetchUserProfile() {
             return;
         }
 
-        // ✅ Update the profile elements
+        // Update the profile elements
         usernameElement.textContent = user.userName || "No Name";
         avatarElement.src = user.avatarLink || "/images/default-avatar.png"; // Use default avatar if empty
         bioElement.textContent = user.bio || "No bio available.";
@@ -57,14 +58,39 @@ async function fetchUserProfile() {
     }
 }
 
-/** ✅ Logout User */
+/* Logout User */
 async function logoutUser() {
     await fetch("/api/logout", { method: "POST", credentials: "include" });
     alert("Logged out successfully.");
     window.location.href = "/index.html";
 }
 
-/** ✅ Update Profile */
+/* Handle avatar file upload and update hidden input */
+async function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const response = await fetch("/api/avatar/upload", {
+        method: "POST",
+        body: formData,
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+        const avatarUrl = result.avatarUrl;
+        document.getElementById("avatarLink").value = avatarUrl;
+        document.getElementById("avatar").src = avatarUrl;
+        alert("Avatar uploaded!");
+    } else {
+        alert("Failed to upload avatar.");
+    }
+}
+
+/* Update Profile */
 async function updateUserProfile(event) {
     event.preventDefault();
 
@@ -82,7 +108,7 @@ async function updateUserProfile(event) {
 
     if (response.ok) {
         alert("Profile updated successfully.");
-        fetchUserProfile(); // ✅ Refresh profile
+        fetchUserProfile(); // Refresh profile
     } else {
         const errorText = await response.text(); // Get server response
         console.error("Failed to update profile:", errorText);
@@ -90,8 +116,7 @@ async function updateUserProfile(event) {
     }
 }
 
-
-/** ✅ Delete Account */
+/* Delete Account */
 async function deleteUser() {
     if (!confirm("Are you sure? This action cannot be undone, and your account will be deactivated for 30 days before permanent deletion.")) return;
 

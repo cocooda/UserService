@@ -53,10 +53,34 @@ button:hover {
     background-color: #218838;
 }
 
+/* Avatar Display */
+#avatar {
+    border-radius: 50%;
+    margin-bottom: 10px;
+    border: 2px solid #ccc;
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+}
+
+/* File input field */
+input[type="file"] {
+    padding: 5px;
+    background-color: #f8f9fa;
+    border: 1px solid #ccc;
+}
+
+/* Section spacing */
+section {
+    margin-top: 30px;
+}
+
 /* Error Message */
 #error-msg {
     color: red;
     font-weight: bold;
 }
 
-.hidden { display: none; }
+.hidden {
+    display: none;
+}

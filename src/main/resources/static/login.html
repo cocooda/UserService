@@ -1,108 +1,112 @@
-<!-- login.html -->
-<form id="login-form">
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <button type="button" id="verify-btn">Next</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="/css/styles.css" />
 
-    <div id="otp-section" style="display: none;">
-        <input type="text" id="otp" placeholder="Enter OTP">
-        <button type="submit">Login</button>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        #login-form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #login-form input, #login-form button {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #google-login-btn {
+            margin-top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+        #reactivation-modal {
+            background: rgba(0, 0, 0, 0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #reactivation-modal div {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <form id="login-form">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="button" id="verify-btn">Next</button>
+
+        <div id="otp-section" style="display: none;">
+            <input type="text" id="otp" placeholder="Enter OTP">
+            <button type="submit">Login</button>
+        </div>
+
+        <!-- Google Sign-In Button -->
+        <!-- Google Sign-In Button -->
+<div id="google-login-btn">
+    <div id="g_id_onload"
+         data-client_id="YOUR_GOOGLE_CLIENT_ID"
+         data-context="signin"
+         data-ux_mode="popup"
+         data-login_uri="http://localhost:7000/api/auth/google-login"
+         data-auto_prompt="false">
     </div>
-</form>
 
-<!-- Reactivation Modal -->
-<div id="reactivation-modal" style="display: none;">
-    <h2>Your account is in the reactivation period.</h2>
-    <button id="reactivate-btn">Reactivate Account</button>
-    <button id="decline-reactivation-btn">No, Continue as Guest</button> <!-- New "No" button -->
+    <div class="g_id_signin"
+         data-type="standard"
+         data-size="large"
+         data-theme="outline"
+         data-text="sign_in_with"
+         data-shape="rectangular"
+         data-logo_alignment="left">
+    </div>
 </div>
 
-<p id="error-msg" style="color: red;"></p>
+    </form>
 
-<script>
-document.getElementById("verify-btn").addEventListener("click", async () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    <!-- Reactivation Modal -->
+    <div id="reactivation-modal">
+        <div>
+            <h2>Your account is in the reactivation period.</h2>
+            <button id="reactivate-btn">Reactivate Account</button>
+            <button id="decline-reactivation-btn">No, Continue as Guest</button>
+        </div>
+    </div>
 
-    const response = await fetch("/api/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-    });
+    <p id="error-msg" style="color: red;"></p>
 
-    const data = await response.json();
-    
-    if (response.ok) {
-        document.getElementById("otp-section").style.display = "block"; // Show OTP field
-    } else {
-        document.getElementById("error-msg").innerText = data.error;
-    }
-});
+    <!-- Google Platform Library -->
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-document.getElementById("login-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const otp = document.getElementById("otp").value;
-
-    const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, otp })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-        if (data.actionRequired === "reactivate") {
-            // Show reactivation prompt if account is soft-deleted and within reactivation period
-            showReactivationPrompt();
-        } else {
-            alert("Login successful!");
-            window.location.href = "/index.html"; // Redirect to home page
-        }
-    } else {
-        document.getElementById("error-msg").innerText = data.error;
-    }
-});
-
-/* Show Reactivation Prompt */
-function showReactivationPrompt() {
-    const reactivationModal = document.getElementById("reactivation-modal");
-    
-    // Check if the modal element exists
-    if (reactivationModal) {
-        reactivationModal.style.display = "block"; // Show the reactivation modal
-    } else {
-        console.error("Reactivation modal not found!");
-    }
-}
-
-
-document.getElementById("reactivate-btn").addEventListener("click", async () => {
-    const response = await fetch("/api/reactivate-account", {
-        method: "POST",
-        credentials: "include", // Ensure session is cleared on the backend
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-        document.getElementById("reactivation-modal").style.display = "none";
-        window.location.href = "/index.html"; // Redirect on reactivation success
-    } else {
-        document.getElementById("error-msg").innerText = data.error;
-    }
-});
-
-document.getElementById("decline-reactivation-btn").addEventListener("click", async () => {
-    // Clear the userId in session
-    await fetch("/api/logout", { method: "POST", credentials: "include" });
-
-    // Hide reactivation modal
-    document.getElementById("reactivation-modal").style.display = "none";
-
-    // Redirect back to home page as guest user
-    window.location.href = "/index.html";
-});
-
-</script>
+    <!-- JS Files -->
+    <script src="/js/google-auth.js" defer></script>
+    <script src="/js/app.js" defer></script>
+</body>
+</html>

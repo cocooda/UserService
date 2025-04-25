@@ -7,16 +7,19 @@ public class Identifier {
     private UUID id;
     private String email;
     private String passwordHash;
+    private String loginMethod; 
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
     private int failedAttempts;
     private LocalDateTime lockoutUntil;
 
-    public Identifier(UUID id, String email, String passwordHash, LocalDateTime createdAt,
-                      LocalDateTime lastLogin, int failedAttempts, LocalDateTime lockoutUntil) {
+    public Identifier(UUID id, String email, String passwordHash, String loginMethod,
+                      LocalDateTime createdAt, LocalDateTime lastLogin,
+                      int failedAttempts, LocalDateTime lockoutUntil) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
+        this.loginMethod = loginMethod;
         this.createdAt = createdAt;
         this.lastLogin = lastLogin;
         this.failedAttempts = failedAttempts;
@@ -33,6 +36,9 @@ public class Identifier {
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
+    public String getLoginMethod() { return loginMethod; }
+    public void setLoginMethod(String loginMethod) { this.loginMethod = loginMethod; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -45,6 +51,7 @@ public class Identifier {
     public LocalDateTime getLockoutUntil() { return lockoutUntil; }
     public void setLockoutUntil(LocalDateTime lockoutUntil) { this.lockoutUntil = lockoutUntil; }
 
+    // Account lock logic
     public void incrementFailedAttempts() { this.failedAttempts++; }
     public void resetFailedAttempts() { this.failedAttempts = 0; }
 
@@ -52,12 +59,11 @@ public class Identifier {
 
     public boolean isLocked() {
         if (lockoutUntil != null && lockoutUntil.isAfter(LocalDateTime.now())) {
-            return true; // User is still locked
+            return true;
         }
-        // Reset failed attempts after lockout time has passed
         if (lockoutUntil != null && lockoutUntil.isBefore(LocalDateTime.now())) {
             resetFailedAttempts();
-            lockoutUntil = null; // Unlock user
+            lockoutUntil = null;
         }
         return false;
     }
@@ -67,5 +73,4 @@ public class Identifier {
             resetFailedAttempts();
         }
     }
-    
 }

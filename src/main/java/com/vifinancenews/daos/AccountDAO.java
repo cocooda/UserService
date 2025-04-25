@@ -6,6 +6,8 @@ import com.vifinancenews.utilities.IDHash;
 
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,6 +27,7 @@ public class AccountDAO {
             pstmt.setString(4, bio);
 
             int rowsInserted = pstmt.executeUpdate();
+            System.out.println("Rows inserted into account: " + rowsInserted);
             if (rowsInserted > 0) {
                 return new Account(hashedId, userName, avatarLink, bio);
             }
@@ -144,6 +147,18 @@ public class AccountDAO {
         }
     }
 
+    public static boolean deleteFromDeletedAccounts(UUID identifierId) throws SQLException {
+        String hashedId = IDHash.hashUUID(identifierId);
+        String query = "DELETE FROM deleted_accounts WHERE user_id = ?";
+    
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, hashedId);
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+    
+
     public static Account getAccountByUserId(UUID userId) throws SQLException {
         String hashedUserId = IDHash.hashUUID(userId);
         String query = "SELECT user_id, username, avatar_link, bio FROM account WHERE user_id = ?";
@@ -166,18 +181,41 @@ public class AccountDAO {
     }
 
     public static boolean updateAccount(UUID userId, String userName, String avatarLink, String bio) throws SQLException {
-        String hashedUserId = IDHash.hashUUID(userId);
-        String query = "UPDATE account SET username = ?, avatar_link = ?, bio = ? WHERE user_id = ?";
+    String hashedUserId = IDHash.hashUUID(userId);
 
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
+    List<String> updates = new ArrayList<>();
+    List<Object> params = new ArrayList<>();
 
-            pstmt.setString(1, userName);
-            pstmt.setString(2, avatarLink);
-            pstmt.setString(3, bio);
-            pstmt.setString(4, hashedUserId);
-
-            return pstmt.executeUpdate() > 0;
-        }
+    if (userName != null) {
+        updates.add("username = ?");
+        params.add(userName);
     }
+    if (avatarLink != null) {
+        updates.add("avatar_link = ?");
+        params.add(avatarLink);
+    }
+    if (bio != null) {
+        updates.add("bio = ?");
+        params.add(bio);
+    }
+
+    if (updates.isEmpty()) {
+        return false; // Nothing to update
+    }
+
+    String query = "UPDATE account SET " + String.join(", ", updates) + " WHERE user_id = ?";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+        int index = 1;
+        for (Object param : params) {
+            pstmt.setString(index++, (String) param);
+        }
+        pstmt.setString(index, hashedUserId);
+
+        return pstmt.executeUpdate() > 0;
+    }
+}
+
 }

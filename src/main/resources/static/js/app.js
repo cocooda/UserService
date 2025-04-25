@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-    checkAuthStatus(); // ✅ Check session on page load
+    checkAuthStatus(); // Check session on page load
 
     document.getElementById("register-form")?.addEventListener("submit", registerUser);
     document.getElementById("login-form")?.addEventListener("submit", loginUser);
@@ -7,28 +7,49 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("reactivate-btn")?.addEventListener("click", reactivateAccount);
 });
 
-
-/** ✅ Register User */
+/* Register User */
 async function registerUser(event) {
     event.preventDefault();
 
-    const formData = new FormData(event.target);
-    const data = Object.fromEntries(formData.entries());
+    const form = event.target;
+    const formData = new FormData(form);
+    const avatar = formData.get("avatar");
+    let avatarLink = null;
 
-    data.avatarLink = data.avatarLink || ""; 
-    data.bio = data.bio || ""; 
+    if (avatar && avatar.size > 0) {
+        const uploadFormData = new FormData();
+        uploadFormData.append("avatar", avatar);
 
-    console.log("Sending JSON data:", JSON.stringify(data)); // ✅ Debug before sending
+        const uploadResp = await fetch("/api/avatar/upload", {
+            method: "POST",
+            body: uploadFormData,
+        });
+
+        if (uploadResp.ok) {
+            const uploadResult = await uploadResp.json();
+            avatarLink = uploadResult.avatarUrl;
+        } else {
+            alert("Avatar upload failed. Error status: " + uploadResp.status);
+            return;
+        }
+    }
+
+    const userData = {
+        email: formData.get("email"),
+        password: formData.get("password"),
+        userName: formData.get("userName"),
+        bio: formData.get("bio") || "",
+        avatarLink: avatarLink,
+    };
 
     const response = await fetch("/api/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },  // ✅ Ensure JSON
-        body: JSON.stringify(data), 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
         credentials: "include",
     });
 
     const result = await response.json();
-    console.log("Server response:", result); // ✅ Debug server response
 
     if (response.ok) {
         alert("Registration successful! Please log in.");
@@ -38,8 +59,7 @@ async function registerUser(event) {
     }
 }
 
-
-/** ✅ Login User */
+/* Login User */
 async function loginUser(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
@@ -49,55 +69,52 @@ async function loginUser(event) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-        credentials: "include", // ✅ Ensure session persistence
+        credentials: "include",
     });
 
     const result = await response.json();
 
     if (response.ok) {
-        console.log("User ID from login response: " + result.userId);
         if (result.actionRequired === "reactivate") {
             // Show reactivation prompt if account is soft-deleted and within the reactivation period
             showReactivationPrompt();
         } else {
             alert("Login successful!");
-            window.location.href = "/index.html"; // Redirect to home
+            window.location.href = "/index.html";
         }
     } else {
         alert("Invalid login credentials or OTP.");
     }
 }
 
-/** ✅ Reactivate Account */
+/* Reactivate Account */
 async function reactivateAccount() {
     const response = await fetch("/api/reactivate-account", {
         method: "POST",
-        credentials: "include", // Ensure session is cleared on the backend
+        credentials: "include",
     });
 
     const result = await response.json();
     if (response.ok) {
         alert("Account reactivated successfully!");
-        window.location.href = "/index.html"; // Redirect to home after reactivation
+        window.location.href = "/index.html";
     } else {
         alert("Failed to reactivate account: " + result.error);
     }
 }
 
-
-
-/** ✅ Logout User */
+/* Logout User */
 async function logoutUser() {
-    await fetch("/api/logout", { 
+    await fetch("/api/logout", {
         method: "POST",
-        credentials: "include", // ✅ Ensure session is cleared on the backend
+        credentials: "include",
     });
 
     alert("Logged out successfully.");
     window.location.href = "/index.html";
 }
 
-/** ✅ Check Authentication Status */
+/* Check Authentication Status */
 async function checkAuthStatus() {
     const response = await fetch("/api/auth-status", { credentials: "include" });
 
@@ -107,11 +124,11 @@ async function checkAuthStatus() {
         const userSection = document.getElementById("user-section");
 
         if (data.loggedIn) {
-            authSection?.classList.add("hidden"); // ✅ Hide login/register
-            userSection?.classList.remove("hidden"); // ✅ Show profile button
+            authSection?.classList.add("hidden");
+            userSection?.classList.remove("hidden");
         } else {
-            authSection?.classList.remove("hidden"); // ✅ Show login/register
-            userSection?.classList.add("hidden"); // ✅ Hide profile button
+            authSection?.classList.remove("hidden");
+            userSection?.classList.add("hidden");
         }
     }
 }

@@ -10,7 +10,7 @@ import java.util.UUID;
 public class IdentifierDAO {
 
     public static Identifier getIdentifierByEmail(String email) throws SQLException {
-        String query = "SELECT id, email, password_hash, created_at, last_login, failed_attempts, lockout_until FROM identifier WHERE email = ?";
+        String query = "SELECT id, email, password_hash, login_method, created_at, last_login, failed_attempts, lockout_until FROM identifier WHERE email = ?";
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
@@ -21,6 +21,7 @@ public class IdentifierDAO {
                         UUID.fromString(rs.getString("id")),
                         rs.getString("email"),
                         rs.getString("password_hash"),
+                        rs.getString("login_method"),
                         rs.getTimestamp("created_at").toLocalDateTime(),
                         rs.getTimestamp("last_login") != null ? rs.getTimestamp("last_login").toLocalDateTime() : null,
                         rs.getInt("failed_attempts"),
@@ -62,28 +63,29 @@ public class IdentifierDAO {
         }
     }
 
-    public static Identifier insertIdentifier(String email, String passwordHash) throws SQLException {
-        UUID userId = UUID.randomUUID(); // Generate UUID in Java
+    public static Identifier insertIdentifier(String email, String passwordHash, String loginMethod) throws SQLException {
+        UUID userId = UUID.randomUUID();
         LocalDateTime createdAt = LocalDateTime.now();
 
-        String query = "INSERT INTO identifier (id, email, password_hash, created_at, last_login, failed_attempts, lockout_until) " +
-                       "VALUES (?, ?, ?, ?, NULL, 0, NULL)";
+        String query = "INSERT INTO identifier (id, email, password_hash, login_method, created_at, last_login, failed_attempts, lockout_until) " +
+                       "VALUES (?, ?, ?, ?, ?, NULL, 0, NULL)";
 
         try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            PreparedStatement pstmt = conn.prepareStatement(query)) {
 
             pstmt.setString(1, userId.toString());
             pstmt.setString(2, email);
             pstmt.setString(3, passwordHash);
-            pstmt.setTimestamp(4, Timestamp.valueOf(createdAt));
+            pstmt.setString(4, loginMethod);
+            pstmt.setTimestamp(5, Timestamp.valueOf(createdAt));
 
             int rowsInserted = pstmt.executeUpdate();
             if (rowsInserted > 0) {
-                return new Identifier(userId, email, passwordHash, createdAt, null, 0, null);
+                return new Identifier(userId, email, passwordHash, loginMethod, createdAt, null, 0, null);
             }
         }
-        return null; // Return null if insertion failed
-    }    
+        return null;
+    }
 
     public static boolean deleteIdentifierByEmail(String email) throws SQLException {
         String query = "DELETE FROM identifier WHERE email = ?";
@@ -110,11 +112,9 @@ public class IdentifierDAO {
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
-            
             stmt.setInt(1, days);
             int rowsDeleted = stmt.executeUpdate();
             return rowsDeleted > 0;
         }
     }
-    
 }

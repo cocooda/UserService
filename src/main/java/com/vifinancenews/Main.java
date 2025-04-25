@@ -1,6 +1,8 @@
 package com.vifinancenews;
 
 import com.vifinancenews.controllers.AuthController;
+import com.vifinancenews.controllers.AvatarController;
+import com.vifinancenews.controllers.GoogleAuthController;
 import com.vifinancenews.controllers.GuestController;
 import com.vifinancenews.controllers.UserController;
 import io.javalin.Javalin;
@@ -29,9 +31,25 @@ public class Main {
         }).start(7000);
 
         app.before(ctx -> {
+            // Set Content Security Policy (CSP) header
+            ctx.header("Content-Security-Policy", String.join("; ",
+    "default-src 'self'",
+    "script-src 'self' https://accounts.google.com https://apis.google.com https://www.gstatic.com 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "frame-src https://accounts.google.com https://apis.google.com",
+    "connect-src 'self' https://www.googleapis.com https://accounts.google.com",
+    "img-src 'self' https://lh3.googleusercontent.com data:"
+));
+
+
+
+            // CORS Settings
             ctx.header("Access-Control-Allow-Origin", "*"); // Allow all origins
             ctx.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             ctx.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+            // Session settings: Add cookie for session expiration
+            ctx.cookie("session_timeout", String.valueOf(System.currentTimeMillis()), 600); // Session timeout in seconds
         });
 
         // **Auth Routes**
@@ -49,6 +67,9 @@ public class Main {
 
         // **Guest Routes**
         GuestController.registerRoutes(app);
+
+        app.post("/api/avatar/upload", AvatarController.uploadAvatar);
+        app.post("/api/auth/google-login", GoogleAuthController.handleGoogleLogin);
 
         System.out.println("Server running on http://localhost:7000");
     }
