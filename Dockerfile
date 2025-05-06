@@ -2,18 +2,19 @@
 FROM openjdk:22-jdk-slim
 
 # Set the working directory inside the container
-WORKDIR /app
+WORKDIR /app/user_service
 
-# Copy the .env file into the container
-COPY .env /app/.env
-RUN chmod 600 /app/.env  
-# Set read/write permissions for the owner only
+# Copy the .env file into the container's user_service directory
+COPY .env /app/user_service/.env
 
-# Copy the compiled jar file from your local machine to the container
-COPY target/vi_finance_news-1.0-SNAPSHOT.jar /app/vi_finance_news.jar
+# Set read/write permissions for the .env file
+RUN chmod 644 /app/user_service/.env
+
+# Copy the pre-built JAR file into the container
+COPY UserService/target/UserService-1.0-SNAPSHOT.jar /app/user_service/UserService-1.0-SNAPSHOT.jar
 
 # Expose the port your app runs on
 EXPOSE 7000
 
 # Run the application
-CMD ["java", "-jar", "vi_finance_news.jar"]
+CMD ["java", "-jar", "/app/user_service/UserService-1.0-SNAPSHOT.jar"]

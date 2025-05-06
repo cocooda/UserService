@@ -1,105 +1,43 @@
 document.addEventListener("DOMContentLoaded", async function () {
-    await checkAuthStatus(); // Ensure user is logged in
     await fetchUserProfile(); // Load profile if authenticated
 
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
-    document.getElementById("update-profile-form").addEventListener("submit", updateUserProfile);
-    document.getElementById("delete-account-btn").addEventListener("click", deleteUser);
+    document.getElementById("update-info-form").addEventListener("submit", updateProfileInfo);
     document.getElementById("new-avatar").addEventListener("change", handleAvatarUpload);
+    document.getElementById("change-password-form").addEventListener("submit", changePassword);
+    document.getElementById("delete-account-btn").addEventListener("click", deleteUser);
 });
-
-/* Check if user is authenticated */
-async function checkAuthStatus() {
-    try {
-        const response = await fetch("/api/auth-status", { credentials: "include" });
-        if (!response.ok) {
-            window.location.href = "/login.html"; // Redirect if not logged in
-            return false;
-        }
-        return true;
-    } catch (error) {
-        console.error("Auth check failed:", error);
-        return false;
-    }
-}
 
 /* Fetch and display user profile */
 async function fetchUserProfile() {
-    console.log("Fetching user profile...");
-
     try {
         const response = await fetch("/api/user/profile", { credentials: "include" });
-
-        if (!response.ok) {
-            console.error("Failed to fetch user profile (401 Unauthorized?)");
-            return;
-        }
+        if (!response.ok) throw new Error("Unauthorized");
 
         const user = await response.json();
-        console.log("Received user data:", user);
-
-        // Ensure profile elements exist before updating
-        const usernameElement = document.getElementById("username");
-        const avatarElement = document.getElementById("avatar");
-        const bioElement = document.getElementById("bio");
-
-        if (!usernameElement || !avatarElement || !bioElement) {
-            console.error("One or more profile elements are missing in HTML.");
-            return;
-        }
-
-        // Update the profile elements
-        usernameElement.textContent = user.userName || "No Name";
-        avatarElement.src = user.avatarLink || "/images/default-avatar.png"; // Use default avatar if empty
-        bioElement.textContent = user.bio || "No bio available.";
-
+        document.getElementById("username").textContent = user.userName || "No Name";
+        document.getElementById("avatar").src = user.avatarLink || "/images/default-avatar.png";
+        document.getElementById("bio").textContent = user.bio || "No bio available.";
     } catch (error) {
         console.error("Error fetching profile:", error);
     }
 }
 
-/* Logout User */
+/* Logout */
 async function logoutUser() {
     await fetch("/api/logout", { method: "POST", credentials: "include" });
     alert("Logged out successfully.");
-    window.location.href = "/index.html";
+    window.location.href = "http://localhost:6999/index.html";
 }
 
-/* Handle avatar file upload and update hidden input */
-async function handleAvatarUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("avatar", file);
-
-    const response = await fetch("/api/avatar/upload", {
-        method: "POST",
-        body: formData,
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-        const avatarUrl = result.avatarUrl;
-        document.getElementById("avatarLink").value = avatarUrl;
-        document.getElementById("avatar").src = avatarUrl;
-        alert("Avatar uploaded!");
-    } else {
-        alert("Failed to upload avatar.");
-    }
-}
-
-/* Update Profile */
-async function updateUserProfile(event) {
+/* Update profile info (username & bio) */
+async function updateProfileInfo(event) {
     event.preventDefault();
 
     const formData = new FormData(event.target);
     const data = Object.fromEntries(formData.entries());
 
-    console.log("Sending profile update:", data); // Log request body
-
-    const response = await fetch("/api/user/update", {
+    const response = await fetch("/api/user/update-info", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -107,30 +45,133 @@ async function updateUserProfile(event) {
     });
 
     if (response.ok) {
-        alert("Profile updated successfully.");
-        fetchUserProfile(); // Refresh profile
+        alert("Profile info updated.");
+        fetchUserProfile();
     } else {
-        const errorText = await response.text(); // Get server response
-        console.error("Failed to update profile:", errorText);
-        alert("Failed to update profile: " + errorText);
+        const errorText = await response.text();
+        alert("Failed to update info: " + errorText);
     }
 }
 
-/* Delete Account */
-async function deleteUser() {
-    if (!confirm("Are you sure? This action cannot be undone, and your account will be deactivated for 30 days before permanent deletion.")) return;
+/* Upload avatar + update avatar link in backend */
+async function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    const response = await fetch("/api/user/delete", { 
+    // Step 1: Upload the avatar to the server (store the file, but don't update the avatar URL yet)
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+        const uploadResponse = await fetch("/api/avatar/upload", {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+            throw new Error("Failed to upload avatar.");
+        }
+
+        const result = await uploadResponse.json();
+        const avatarUrl = result.avatarUrl;
+
+        // Display the uploaded image as a preview
+        document.getElementById("avatar-preview").src = avatarUrl;
+
+        // Store the avatar URL temporarily in a hidden input field
+        document.getElementById("avatarLink").value = avatarUrl;
+    } catch (error) {
+        alert("Error: " + error.message);
+    }
+}
+
+async function updateAvatarLink(event) {
+    event.preventDefault();
+
+    const avatarUrl = document.getElementById("avatarLink").value;
+
+    if (!avatarUrl) {
+        alert("Please upload a new avatar first.");
+        return;
+    }
+
+    // Step 2: Send the avatar link to update the user's profile
+    const response = await fetch("/api/user/avatar", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarLink: avatarUrl }),
+        credentials: "include",
+    });
+
+    if (response.ok) {
+        document.getElementById("avatar").src = avatarUrl; // Update the avatar in the UI
+        alert("Avatar updated successfully.");
+    } else {
+        const errorText = await response.text();
+        alert("Failed to update avatar: " + errorText);
+    }
+}
+
+
+/* Change password */
+async function changePassword(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData.entries());
+
+    // Validate form fields
+    if (!data.oldPassword || !data.newPassword || !data.confirmPassword) {
+        alert("Please fill in all fields.");
+        return;
+    }
+
+    if (data.newPassword !== data.confirmPassword) {
+        alert("New password and confirmation password do not match.");
+        return;
+    }
+
+    const payload = {
+        currentPassword: data.oldPassword,
+        newPassword: data.newPassword
+    };
+
+    try {
+        const response = await fetch("/api/user/change-password", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            credentials: "include",
+        });
+
+        if (response.ok) {
+            alert("Password changed successfully.");
+            event.target.reset(); // Clear form
+        } else {
+            const errorText = await response.text();
+            alert("Password change failed: " + errorText);
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert("An error occurred while changing password.");
+    }
+}
+
+
+
+/* Delete account */
+async function deleteUser() {
+    if (!confirm("Are you sure? This will deactivate your account for 30 days before deletion.")) return;
+
+    const response = await fetch("/api/user/delete", {
         method: "DELETE",
         credentials: "include",
     });
 
     if (response.ok) {
-        const message = await response.text(); // Get the response message
-        alert(message); // Display the message to the user
-        window.location.href = "/index.html"; // Redirect to homepage
+        alert(await response.text());
+        window.location.href = "/index.html";
     } else {
         alert("Failed to delete account.");
     }
 }
-

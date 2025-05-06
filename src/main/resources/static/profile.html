@@ -10,7 +10,7 @@
   <header>
     <h1>User Profile</h1>
     <nav>
-      <a href="/index.html">Home</a>
+      <a href="http://localhost:6999/index.html">Home</a>
       <button id="logout-btn">Logout</button>
     </nav>
   </header>
@@ -19,39 +19,63 @@
     <section id="profile-section">
       <h2>Profile Information</h2>
 
-      <!--  Avatar -->
+      <!-- Avatar -->
       <img id="avatar" src="/images/default-avatar.png" alt="User Avatar" width="100" />
 
-      <!--  User Info -->
+      <!-- User Info -->
       <p><strong>Username:</strong> <span id="username">Loading...</span></p>
       <p><strong>Bio:</strong> <span id="bio">Loading...</span></p>
     </section>
 
-    <!--  Update Profile Form -->
-    <section id="update-profile">
-      <h2>Update Profile</h2>
-      <form id="update-profile-form" enctype="multipart/form-data">
-        <!-- Current Avatar Preview -->
-        <img id="avatar-preview" src="/images/default-avatar.png" alt="User Avatar" width="100" />
-
+    <!-- Update Profile Info -->
+    <section id="update-profile-info">
+      <h2>Update Profile Information</h2>
+      <form id="update-info-form">
         <label for="userName">Username:</label>
         <input type="text" id="userName" name="userName" />
 
         <label for="bio">Bio:</label>
         <textarea id="bioInput" name="bio"></textarea>
 
-        <!-- New Avatar Upload -->
+        <button type="submit">Update Info</button>
+      </form>
+    </section>
+
+    <!-- Update Avatar -->
+    <section id="update-avatar">
+      <h2>Update Avatar</h2>
+      <form id="update-avatar-form" enctype="multipart/form-data">
         <label for="new-avatar">Upload New Avatar:</label>
         <input type="file" id="new-avatar" name="new-avatar" accept="image/*" />
+
+        <!-- Avatar preview section -->
+        <img id="avatar-preview" src="/images/default-avatar.png" alt="Avatar Preview" width="100" />
 
         <!-- Hidden field to store uploaded avatar URL -->
         <input type="hidden" id="avatarLink" name="avatarLink" />
 
-        <button type="submit">Update Profile</button>
+        <button type="submit">Update Avatar</button>
       </form>
     </section>
 
-    <!--  Delete Account -->
+    <!-- Change Password -->
+    <section id="change-password">
+      <h2>Change Password</h2>
+      <form id="change-password-form">
+        <label for="current-password">Current Password:</label>
+        <input type="password" id="current-password" name="oldPassword" required />
+
+        <label for="new-password">New Password:</label>
+        <input type="password" id="new-password" name="newPassword" required />
+
+        <label for="confirm-password">Confirm New Password:</label>
+        <input type="password" id="confirm-password" name="confirmPassword" required />
+
+        <button type="submit">Change Password</button>
+      </form>
+    </section>
+
+    <!-- Delete Account -->
     <button id="delete-account-btn" style="color: red;">Delete Account</button>
   </main>
 
