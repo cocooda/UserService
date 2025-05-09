@@ -14,7 +14,7 @@ RUN chmod 644 /app/user_service/.env
 COPY UserService/target/UserService-1.0-SNAPSHOT.jar /app/user_service/UserService-1.0-SNAPSHOT.jar
 
 # Expose the port your app runs on
-EXPOSE 7000
+EXPOSE 6998
 
 # Run the application
 CMD ["java", "-jar", "/app/user_service/UserService-1.0-SNAPSHOT.jar"]

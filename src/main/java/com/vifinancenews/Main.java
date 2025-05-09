@@ -42,7 +42,6 @@ public class Main {
         app.get("/api/user/profile", UserController.getUserProfile);          // Get user profile
         app.put("/api/user/update-info", UserController.updateInfo);  // Update username & bio
         app.put("/api/user/avatar", UserController.updateAvatar);            // Update avatar
-        app.put("/api/user/change-password", UserController.changePassword); // Change password
         app.delete("/api/user/delete", UserController.deleteUser);           // Delete account
 
 

@@ -4,134 +4,86 @@ import com.vifinancenews.common.daos.AccountDAO;
 import com.vifinancenews.common.daos.IdentifierDAO;
 import com.vifinancenews.common.models.Account;
 import com.vifinancenews.common.models.Identifier;
-import com.vifinancenews.common.utilities.IDHash;
-import com.vifinancenews.common.utilities.PasswordHash;
 import com.vifinancenews.common.utilities.RedisCacheService;
 
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public class AccountService {
 
-    //  ========== User Profile ==========
+    // ========== User Profile ==========
 
-    public Account getUserProfile(UUID userId) throws SQLException {
-        // Hash the userId to match the cache key
-        String hashedUserId = IDHash.hashUUID(userId);
-        
-        // Check if user data is cached
-        Map<String, String> cachedData = RedisCacheService.getCachedUserData(hashedUserId);
+    public Account getUserProfile(String accountId) throws SQLException {
+        // Check cache
+        Map<String, String> cachedData = RedisCacheService.getCachedUserData(accountId);
         if (cachedData != null) {
-            // If data is cached, create and return Account object from cache
-            return mapToAccount(cachedData, hashedUserId);  // Pass the hashed userId for creating Account
+            return mapToAccount(cachedData, accountId);
         }
-    
-        // If data is not cached, fetch from DB
-        Account account = AccountDAO.getAccountByUserId(userId);
+
+        // Fallback to DB
+        Account account = AccountDAO.getAccountByAccountId(accountId);
         if (account != null) {
-            // Cache the user data after retrieving from DB
-            RedisCacheService.cacheUserData(hashedUserId, mapAccountToCacheData(account));
+         // Make sure fields are not null before caching
+            if (account.getUserName() != null && account.getAvatarLink() != null && account.getBio() != null) {
+                RedisCacheService.cacheUserData(accountId, mapAccountToCacheData(account));
+            }
+        } else {
+        // Log if account is null for further debugging
+        System.out.println("Account not found for accountId: " + accountId);
         }
-    
+
         return account;
     }
-    
-    
-    /*//Old method (not used anymore)
-    public boolean updateUserProfile(UUID userId, String userName, String avatarLink, String bio) throws SQLException {
-        boolean updated = AccountDAO.updateAccount(userId, userName, avatarLink, bio);
-        if (updated) {
-            String hashedUserId = IDHash.hashUUID(userId);
-        
-            // Clear old cache and store updated data
-            RedisCacheService.clearUserData(hashedUserId);
-        
-            Account updatedAccount = AccountDAO.getAccountByUserId(userId);
-            RedisCacheService.cacheUserData(hashedUserId, mapAccountToCacheData(updatedAccount));
-        }
-        return updated;
-    }*/
 
-    // Update username and bio together
-    public boolean updateUserNameAndBio(UUID userId, String userName, String bio) throws SQLException {
-        boolean updated = AccountDAO.updateUsernameAndBio(userId, userName, bio);
+    public boolean updateUserNameAndBio(String accountId, String userName, String bio) throws SQLException {
+        boolean updated = AccountDAO.updateUsernameAndBio(accountId, userName, bio);
 
         if (updated) {
-            String hashedUserId = IDHash.hashUUID(userId);
-            RedisCacheService.clearUserData(hashedUserId);
+            RedisCacheService.clearUserData(accountId);
 
-            Account updatedAccount = AccountDAO.getAccountByUserId(userId);
-            RedisCacheService.cacheUserData(hashedUserId, mapAccountToCacheData(updatedAccount));
+            Account updatedAccount = AccountDAO.getAccountByAccountId(accountId);
+            RedisCacheService.cacheUserData(accountId, mapAccountToCacheData(updatedAccount));
         }
 
         return updated;
     }
 
-    // Update avatar link only
-    public boolean updateAvatar(UUID userId, String avatarLink) throws SQLException {
-        boolean updated = AccountDAO.updateAvatar(userId, avatarLink);
+    public boolean updateAvatar(String accountId, String avatarLink) throws SQLException {
+        boolean updated = AccountDAO.updateAvatar(accountId, avatarLink);
 
         if (updated) {
-            String hashedUserId = IDHash.hashUUID(userId);
-            RedisCacheService.clearUserData(hashedUserId);
+            RedisCacheService.clearUserData(accountId);
 
-            Account updatedAccount = AccountDAO.getAccountByUserId(userId);
-            RedisCacheService.cacheUserData(hashedUserId, mapAccountToCacheData(updatedAccount));
+            Account updatedAccount = AccountDAO.getAccountByAccountId(accountId);
+            RedisCacheService.cacheUserData(accountId, mapAccountToCacheData(updatedAccount));
         }
 
         return updated;
     }
 
-    //  ========== Password Management ==========
-    public boolean changePassword(UUID userId, String currentPassword, String newPassword) throws SQLException {
-        Identifier user = IdentifierDAO.getIdentifierById(userId);
-        if (user == null || !user.getLoginMethod().equalsIgnoreCase("local")) {
-            return false;
-        }
+    // ========== Account Deletion ==========
 
-        boolean currentPasswordMatches = PasswordHash.verifyPassword(currentPassword, user.getPasswordHash());
-        if (!currentPasswordMatches) {
-            return false;
-        }
-
-        String newHashedPassword = PasswordHash.hashPassword(newPassword);
-        return IdentifierDAO.changePassword(userId, newHashedPassword);
-    }
-
-
-    //  ========== Account Deletion ==========
-
-    public boolean softDeleteUserById(UUID userId) throws SQLException {
-        boolean deleted = AccountDAO.moveAccountToDeleted(userId);
+    public boolean softDeleteUser(String accountId) throws SQLException {
+        boolean deleted = AccountDAO.moveAccountToDeleted(accountId);
         if (deleted) {
-            // Clear cache after soft deletion
-            RedisCacheService.clearUserData(userId.toString());
+            RedisCacheService.clearUserData(accountId);
         }
         return deleted;
     }
 
-    public boolean deleteUserByEmail(String email) throws SQLException {
-        Identifier user = IdentifierDAO.getIdentifierByEmail(email);
-        if (user == null) return false;
-        boolean accountDeleted = AccountDAO.deleteAccountByUserId(user.getId());
-        boolean identifierDeleted = IdentifierDAO.deleteIdentifierByEmail(email);
-        if (accountDeleted && identifierDeleted) {
-            // Clear cache after deletion
-            RedisCacheService.clearUserData(user.getId().toString());
+    public boolean deleteUser(String accountId) throws SQLException {
+        boolean accountDeleted = AccountDAO.deleteFromDeletedAccounts(accountId);
+        if (!accountDeleted) {
+            accountDeleted = AccountDAO.deleteFromDeletedAccounts(accountId);
         }
-        return accountDeleted && identifierDeleted;
-    }
 
-    public boolean deleteUserById(UUID userId) throws SQLException {
-        boolean accountDeleted = AccountDAO.deleteAccountByUserId(userId);
-        if (!accountDeleted) accountDeleted = AccountDAO.deleteFromDeletedAccounts(userId);
-        boolean identifierDeleted = IdentifierDAO.deleteIdentifierByUserId(userId);
+        Identifier user = IdentifierDAO.getIdentifierByAccountId(accountId);
+        boolean identifierDeleted = user != null && IdentifierDAO.deleteIdentifierByUserId(user.getId());
+
         if (accountDeleted && identifierDeleted) {
-            // Clear cache after deletion
-            RedisCacheService.clearUserData(userId.toString());
+            RedisCacheService.clearUserData(accountId);
         }
+
         return accountDeleted && identifierDeleted;
     }
 
@@ -141,7 +93,8 @@ public class AccountService {
         return identifiersDeleted || accountsDeleted;
     }
 
-    // Helper to map Account to Cache Data
+    // ========== Helpers ==========
+
     private Map<String, String> mapAccountToCacheData(Account account) {
         return Map.of(
             "userName", account.getUserName(),
@@ -149,31 +102,14 @@ public class AccountService {
             "bio", account.getBio()
         );
     }
-    
 
-    // Helper to map Cache Data to Account
-    private Account mapToAccount(Map<String, String> data, String userId) {
-        // Convert empty strings back to null for avatarLink and bio
+    private Account mapToAccount(Map<String, String> data, String accountId) {
         String avatarLink = data.get("avatarLink");
         String bio = data.get("bio");
-    
-        // If avatarLink or bio is an empty string, treat it as null
-        if (avatarLink != null && avatarLink.isEmpty()) {
-            avatarLink = null;
-        }
-        if (bio != null && bio.isEmpty()) {
-            bio = null;
-        }
-    
-        return new Account(
-            userId,  // Since userId is passed separately, use it here
-            data.get("userName"),
-            avatarLink,
-            bio
-        );
+
+        if (avatarLink != null && avatarLink.isEmpty()) avatarLink = null;
+        if (bio != null && bio.isEmpty()) bio = null;
+
+        return new Account(accountId, data.get("userName"), avatarLink, bio);
     }
-    
-    
-    
-    
 }
