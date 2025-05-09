@@ -1,0 +1,3 @@
+[submodule "UserService"]
+	path = UserService
+	url = https://github.com/cocooda/UserService.git
