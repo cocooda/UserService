@@ -71,22 +71,6 @@ public class AccountService {
         return deleted;
     }
 
-    public boolean deleteUser(String accountId) throws SQLException {
-        boolean accountDeleted = AccountDAO.deleteFromDeletedAccounts(accountId);
-        if (!accountDeleted) {
-            accountDeleted = AccountDAO.deleteFromDeletedAccounts(accountId);
-        }
-
-        Identifier user = IdentifierDAO.getIdentifierByAccountId(accountId);
-        boolean identifierDeleted = user != null && IdentifierDAO.deleteIdentifierByUserId(user.getId());
-
-        if (accountDeleted && identifierDeleted) {
-            RedisCacheService.clearUserData(accountId);
-        }
-
-        return accountDeleted && identifierDeleted;
-    }
-
     public static boolean permanentlyDeleteExpiredAccounts(int days) throws SQLException {
         boolean identifiersDeleted = IdentifierDAO.deleteExpiredIdentifiers(days);
         boolean accountsDeleted = AccountDAO.deleteExpiredDeletedAccounts(days);
