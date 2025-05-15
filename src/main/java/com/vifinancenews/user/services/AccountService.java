@@ -7,6 +7,8 @@ import com.vifinancenews.common.models.Identifier;
 import com.vifinancenews.common.utilities.RedisCacheService;
 
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AccountService {
@@ -53,7 +55,6 @@ public class AccountService {
 
         if (updated) {
             RedisCacheService.clearUserData(accountId);
-
             Account updatedAccount = AccountDAO.getAccountByAccountId(accountId);
             RedisCacheService.cacheUserData(accountId, mapAccountToCacheData(updatedAccount));
         }
@@ -71,21 +72,45 @@ public class AccountService {
         return deleted;
     }
 
+    public boolean deleteUser(String accountId) throws SQLException {
+        boolean accountDeleted = AccountDAO.deleteFromDeletedAccounts(accountId);
+        if (!accountDeleted) {
+            accountDeleted = AccountDAO.deleteFromDeletedAccounts(accountId);
+        }
+
+        Identifier user = IdentifierDAO.getIdentifierByAccountId(accountId);
+        boolean identifierDeleted = user != null && IdentifierDAO.deleteIdentifierByUserId(user.getId());
+
+        if (accountDeleted && identifierDeleted) {
+            RedisCacheService.clearUserData(accountId);
+        }
+
+        return accountDeleted && identifierDeleted;
+    }
+
     public static boolean permanentlyDeleteExpiredAccounts(int days) throws SQLException {
         boolean identifiersDeleted = IdentifierDAO.deleteExpiredIdentifiers(days);
         boolean accountsDeleted = AccountDAO.deleteExpiredDeletedAccounts(days);
         return identifiersDeleted || accountsDeleted;
     }
 
+    public Map<String, Object> getSavedArticles(String userId, int page, int pageSize) {
+        return AccountDAO.getSavedArticles(userId, page, pageSize);
+}
+
+
     // ========== Helpers ==========
 
     private Map<String, String> mapAccountToCacheData(Account account) {
-        return Map.of(
-            "userName", account.getUserName(),
-            "avatarLink", account.getAvatarLink(),
-            "bio", account.getBio()
-        );
+        Map<String, String> cacheData = new HashMap<>();
+        
+        cacheData.put("userName", account.getUserName() != null ? account.getUserName() : "");
+        cacheData.put("avatarLink", account.getAvatarLink() != null ? account.getAvatarLink() : "");
+        cacheData.put("bio", account.getBio() != null ? account.getBio() : "");
+    
+        return cacheData;
     }
+    
 
     private Account mapToAccount(Map<String, String> data, String accountId) {
         String avatarLink = data.get("avatarLink");

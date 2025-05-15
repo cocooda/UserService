@@ -59,6 +59,7 @@ public class Main {
         app.put("/api/user/update-info", UserController.updateInfo);  // Update username & bio
         app.put("/api/user/avatar", UserController.updateAvatar);            // Update avatar
         app.delete("/api/user/delete", UserController.deleteUser);           // Delete account
+        app.get("/api/user/saved-articles", UserController.getSavedArticles);     // Get identifiers
 
 
         // Avatar Routes
