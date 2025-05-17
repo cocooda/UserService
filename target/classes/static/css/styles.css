@@ -150,3 +150,50 @@ section {
             color: #007BFF;
             text-decoration: none;
         }
+
+#saved-articles-modal {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-top: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.article-card {
+  border: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.article-card h3 {
+  margin: 0;
+}
+
+.article-card a {
+  display: block;
+  margin: 5px 0;
+}
+
+.page-button {
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.active-page {
+  background-color: #4CAF50;
+  color: white;
+  font-weight: bold;
+}
+
+
+#pagination-controls {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+  overflow-x: auto; /* allow scrolling if needed */
+}

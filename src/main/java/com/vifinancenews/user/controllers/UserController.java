@@ -130,4 +130,38 @@ public class UserController {
             ctx.status(400).result("Failed to soft delete user.");
         }
     };
+
+    // Handler to get paginated list of saved articles
+    public static Handler getSavedArticles = ctx -> {
+        String sessionId = ctx.cookie("SESSION_ID");
+        if (sessionId == null) {
+            ctx.status(401).result("Unauthorized");
+            return;
+        }
+
+        Map<String, Object> sessionData = RedisSessionManager.getSession(sessionId);
+        if (sessionData == null || !sessionData.containsKey("userId")) {
+            ctx.status(401).result("Unauthorized");
+            return;
+        }
+
+        String userId = (String) sessionData.get("userId");
+
+        // Parse page query param, default to 1 if missing or invalid
+        int page;
+        try {
+            String pageParam = ctx.queryParam("page");
+            page = (pageParam == null) ? 1 : Integer.parseInt(pageParam);
+            if (page < 1) page = 1;
+        } catch (NumberFormatException e) {
+            ctx.status(400).result("Invalid page number");
+            return;
+        }
+
+        // Fetch paginated saved articles
+        var articles = accountService.getSavedArticles(userId, page, 5); // 5 articles per page
+
+        ctx.json(articles);
+    };
+
 }

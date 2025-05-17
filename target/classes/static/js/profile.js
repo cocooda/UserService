@@ -1,11 +1,24 @@
+let savedArticles = []; // Store all articles
+let totalSavedArticles = 0; // Total number of saved articles
+const articlesPerPage = 5;
+
 document.addEventListener("DOMContentLoaded", async function () {
     await fetchUserProfile(); // Load profile if authenticated
 
     document.getElementById("logout-btn").addEventListener("click", logoutUser);
     document.getElementById("update-info-form").addEventListener("submit", updateProfileInfo);
+    document.getElementById("update-avatar-form").addEventListener("submit", updateAvatarLink);
     document.getElementById("new-avatar").addEventListener("change", handleAvatarUpload);
-    document.getElementById("change-password-form").addEventListener("submit", changePassword);
     document.getElementById("delete-account-btn").addEventListener("click", deleteUser);
+    document.getElementById("show-saved-articles-btn").addEventListener("click", async () => {
+        await loadSavedArticles(); // Fetch and show modal
+        showSavedArticlesModal(1);
+    });
+
+    document.getElementById("close-saved-articles-btn").addEventListener("click", () => {
+        document.getElementById("saved-articles-modal").style.display = "none";
+    });
+
 });
 
 /* Fetch and display user profile */
@@ -174,4 +187,64 @@ async function deleteUser() {
     } else {
         alert("Failed to delete account.");
     }
+
 }
+
+/* SHOW Saved articles */
+async function loadSavedArticles(page = 1) {
+    try {
+        const response = await fetch(`/api/user/saved-articles?page=${page}&size=${articlesPerPage}`, {
+            method: "GET",
+            credentials: "include",
+        });
+
+        if (!response.ok) throw new Error("Failed to load saved articles.");
+
+        const data = await response.json();
+        savedArticles = data.articles;
+        totalSavedArticles = data.totalCount; // use this for pagination
+
+        showSavedArticlesModal(page);
+    } catch (error) {
+        console.error("Error loading saved articles:", error);
+        document.getElementById("saved-articles-container").innerHTML = "<p>Error loading articles.</p>";
+    }
+}
+
+function showSavedArticlesModal(page = 1) {
+    const container = document.getElementById("saved-articles-container");
+    const pagination = document.getElementById("pagination-controls");
+    const modal = document.getElementById("saved-articles-modal");
+
+    modal.style.display = "block";
+    container.innerHTML = "";
+    pagination.innerHTML = "";
+
+    if (!savedArticles || savedArticles.length === 0) {
+        container.innerHTML = "<p>No saved articles yet.</p>";
+        return;
+    }
+
+    savedArticles.forEach(article => {
+        const card = document.createElement("div");
+        card.className = "article-card";
+        card.innerHTML = `
+            <h3>${article.title || "Untitled"}</h3>
+            <a href="${article.url || "#"}" target="_blank">Read More</a>
+        `;
+        container.appendChild(card);
+    });
+
+    const totalPages = Math.ceil(totalSavedArticles / articlesPerPage);
+
+    for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement("button");
+        pageBtn.textContent = i;
+        pageBtn.classList.add("page-button");
+        if (i === page) pageBtn.classList.add("active-page");
+
+        pageBtn.addEventListener("click", () => loadSavedArticles(i));
+        pagination.appendChild(pageBtn);
+    }
+}
+

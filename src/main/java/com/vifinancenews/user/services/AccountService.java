@@ -7,6 +7,8 @@ import com.vifinancenews.common.models.Identifier;
 import com.vifinancenews.common.utilities.RedisCacheService;
 
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AccountService {
@@ -53,7 +55,6 @@ public class AccountService {
 
         if (updated) {
             RedisCacheService.clearUserData(accountId);
-
             Account updatedAccount = AccountDAO.getAccountByAccountId(accountId);
             RedisCacheService.cacheUserData(accountId, mapAccountToCacheData(updatedAccount));
         }
@@ -93,16 +94,23 @@ public class AccountService {
         return identifiersDeleted || accountsDeleted;
     }
 
+    public Map<String, Object> getSavedArticles(String userId, int page, int pageSize) {
+        return AccountDAO.getSavedArticles(userId, page, pageSize);
+}
+
+
     // ========== Helpers ==========
 
     private Map<String, String> mapAccountToCacheData(Account account) {
-        // Avoid null values in Map.of
-        return Map.of(
-            "userName", account.getUserName() != null ? account.getUserName() : "",
-            "avatarLink", account.getAvatarLink() != null ? account.getAvatarLink() : "",
-            "bio", account.getBio() != null ? account.getBio() : ""
-        );
+        Map<String, String> cacheData = new HashMap<>();
+        
+        cacheData.put("userName", account.getUserName() != null ? account.getUserName() : "");
+        cacheData.put("avatarLink", account.getAvatarLink() != null ? account.getAvatarLink() : "");
+        cacheData.put("bio", account.getBio() != null ? account.getBio() : "");
+    
+        return cacheData;
     }
+    
 
     private Account mapToAccount(Map<String, String> data, String accountId) {
         String avatarLink = data.get("avatarLink");
