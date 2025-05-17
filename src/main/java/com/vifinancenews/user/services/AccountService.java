@@ -96,10 +96,11 @@ public class AccountService {
     // ========== Helpers ==========
 
     private Map<String, String> mapAccountToCacheData(Account account) {
+        // Avoid null values in Map.of
         return Map.of(
-            "userName", account.getUserName(),
-            "avatarLink", account.getAvatarLink(),
-            "bio", account.getBio()
+            "userName", account.getUserName() != null ? account.getUserName() : "",
+            "avatarLink", account.getAvatarLink() != null ? account.getAvatarLink() : "",
+            "bio", account.getBio() != null ? account.getBio() : ""
         );
     }
 
